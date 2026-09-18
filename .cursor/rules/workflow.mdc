@@ -1,3 +1,7 @@
+---
+description: Пошаговый процесс разработки MVP Telegram LLM-бота по итерациям
+alwaysApply: true
+---
 # Workflow: Разработка Telegram LLM-бота
 
 **Цель**: разработать MVP Telegram LLM-ассистента по плану в `docs/tasklist.md` и видению `docs/vision.md`.

@@ -1,4 +1,5 @@
 ---
+name: Conventions
 description: Принципы генерации кода для MVP Telegram LLM-ассистента
 alwaysApply: true
 ---

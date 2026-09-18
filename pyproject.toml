@@ -1,0 +1,12 @@
+[project]
+name = "my_first_bot"
+version = "0.1.0"
+dependencies = [
+    "aiogram",
+    "uv",
+    "python-dotenv",
+]
+
+[build-system]
+requires = ["uv"]
+build-backend = "uv"

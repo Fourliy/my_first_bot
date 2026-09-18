@@ -1,6 +1,7 @@
 ---
 description: Пошаговый процесс разработки MVP Telegram LLM-бота по итерациям
 alwaysApply: true
+name:  WorkFlow
 ---
 # Workflow: Разработка Telegram LLM-бота
 

@@ -5,7 +5,7 @@ from typing import Literal
 
 @dataclass
 class DialogMessage:
-    role: Literal["user", "assistant"]
+    role: Literal["system", "user", "assistant"]
     content: str
 
 

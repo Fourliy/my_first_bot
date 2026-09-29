@@ -19,6 +19,7 @@ class TelegramBot:
 
     def __init__(self, config: Config, llm: LLMClient) -> None:
         self._llm = llm
+        self._system_prompt = config.system_prompt
         self._dialogs: dict[int, Dialog] = {}  # chat_id -> история (только в памяти)
         self.bot = Bot(token=config.telegram_token)
         self.dp = Dispatcher()
@@ -41,7 +42,12 @@ class TelegramBot:
             dialog.messages.append(DialogMessage("user", message.text))
             try:
                 # Новое сообщение уже в истории, поэтому окно режем до отправки.
-                reply = await self._llm.chat(dialog.to_llm_messages(MAX_HISTORY))
+                # Системный промпт добавляется в каждый запрос и не хранится в истории.
+                messages = [
+                    {"role": "system", "content": self._system_prompt},
+                    *dialog.to_llm_messages(MAX_HISTORY),
+                ]
+                reply = await self._llm.chat(messages)
             except Exception:
                 dialog.messages.pop()  # не оставляем вопрос без ответа в истории
                 logger.error(

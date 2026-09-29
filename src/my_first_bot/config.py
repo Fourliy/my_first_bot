@@ -9,6 +9,8 @@ class Config:
     def __init__(self) -> None:
         load_dotenv()
         self.telegram_token = self._require("TELEGRAM_TOKEN")
+        self.openrouter_api_key = self._require("OPENROUTER_API_KEY")
+        self.model_name = os.getenv("MODEL_NAME", "openai/gpt-4o-mini")
         self.log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 
     @staticmethod

@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from .config import Config
+from .llm_client import LLMClient
 from .logger import setup_logger
 from .telegram_bot import TelegramBot
 
@@ -12,7 +13,7 @@ class Runner:
     def __init__(self) -> None:
         self.config = Config()
         setup_logger(self.config.log_level)
-        self.bot = TelegramBot(self.config)
+        self.bot = TelegramBot(self.config, LLMClient(self.config))
 
     def run(self) -> None:
         logging.getLogger("my_first_bot").info("Bot started")

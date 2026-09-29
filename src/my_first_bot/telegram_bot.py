@@ -40,7 +40,8 @@ class TelegramBot:
         async with dialog.lock:
             dialog.messages.append(DialogMessage("user", message.text))
             try:
-                reply = await self._llm.chat(dialog.to_llm_messages())
+                # Новое сообщение уже в истории, поэтому окно режем до отправки.
+                reply = await self._llm.chat(dialog.to_llm_messages(MAX_HISTORY))
             except Exception:
                 dialog.messages.pop()  # не оставляем вопрос без ответа в истории
                 logger.error(

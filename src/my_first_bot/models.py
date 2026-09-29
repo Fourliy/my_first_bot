@@ -16,8 +16,10 @@ class Dialog:
     messages: list[DialogMessage] = field(default_factory=list)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
-    def to_llm_messages(self) -> list[dict]:
-        return [{"role": m.role, "content": m.content} for m in self.messages]
+    def to_llm_messages(self, limit: int | None = None) -> list[dict]:
+        """Сообщения для модели; при `limit` берутся только последние `limit` штук."""
+        messages = self.messages[-limit:] if limit else self.messages
+        return [{"role": m.role, "content": m.content} for m in messages]
 
     def trim(self, limit: int) -> None:
         """FIFO: оставляет только последние `limit` сообщений."""

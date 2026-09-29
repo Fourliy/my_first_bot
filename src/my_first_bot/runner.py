@@ -21,4 +21,8 @@ class Runner:
 
 
 if __name__ == "__main__":
-    Runner().run()
+    try:
+        runner = Runner()
+    except RuntimeError as e:  # ошибка конфигурации: коротко, без traceback
+        raise SystemExit(f"Ошибка конфигурации: {e}. См. .env.example")
+    runner.run()

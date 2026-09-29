@@ -1,10 +1,19 @@
-from pydantic import BaseSettings
+import os
 
-class Config(BaseSettings):
-    TELEGRAM_TOKEN: str
-    OPENROUTER_API_KEY: str
-    MODEL_NAME: str = "gpt-3.5-turbo"
-    LOG_LEVEL: str = "INFO"
+from dotenv import load_dotenv
 
-    class Config:
-        env_file = ".env"
+
+class Config:
+    """Чтение и валидация переменных окружения."""
+
+    def __init__(self) -> None:
+        load_dotenv()
+        self.telegram_token = self._require("TELEGRAM_TOKEN")
+        self.log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+
+    @staticmethod
+    def _require(name: str) -> str:
+        value = os.getenv(name)
+        if not value:
+            raise RuntimeError(f"Не задана переменная окружения {name}")
+        return value

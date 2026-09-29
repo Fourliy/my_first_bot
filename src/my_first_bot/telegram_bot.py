@@ -1,20 +1,27 @@
-from aiogram import Bot, Dispatcher, types
+import logging
+
+from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
+from aiogram.types import Message
+
 from .config import Config
-from .logger import setup_logger
 
-def setup_bot(config: Config):
-    bot = Bot(token=config.TELEGRAM_TOKEN)
-    dp = Dispatcher()
-    setup_logger(config.LOG_LEVEL)
+logger = logging.getLogger("my_first_bot")
 
-    @dp.message(Command("start"))
-    async def send_welcome(message: types.Message):
-        await message.reply("Привет! Я — ваш LLM-ассистент.")
 
-    return bot, dp
-```
-```tool
-TOOL_NAME: edit_existing_file
-BEGIN_ARG: filepath
-"src/my_first_bot/runner.py"
+class TelegramBot:
+    """Обработчики сообщений aiogram (long polling)."""
+
+    def __init__(self, config: Config) -> None:
+        self.bot = Bot(token=config.telegram_token)
+        self.dp = Dispatcher()
+        self.dp.message.register(self._start, Command("start"))
+
+    async def _start(self, message: Message) -> None:
+        logger.info("event=start chat_id=%s", message.chat.id)
+        await message.answer(
+            "Привет! Я бот-ассистент и я на связи. Скоро научусь отвечать на вопросы."
+        )
+
+    async def run(self) -> None:
+        await self.dp.start_polling(self.bot)

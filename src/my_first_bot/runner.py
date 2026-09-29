@@ -1,11 +1,23 @@
-from aiogram.utils import executor
-from .telegram_bot import setup_bot
-from .config import Config
+import asyncio
+import logging
 
-def run():
-    config = Config()
-    dp = setup_bot(config)
-    executor.start_polling(dp, skip_updates=True)
+from .config import Config
+from .logger import setup_logger
+from .telegram_bot import TelegramBot
+
+
+class Runner:
+    """Собирает компоненты и запускает polling."""
+
+    def __init__(self) -> None:
+        self.config = Config()
+        setup_logger(self.config.log_level)
+        self.bot = TelegramBot(self.config)
+
+    def run(self) -> None:
+        logging.getLogger("my_first_bot").info("Bot started")
+        asyncio.run(self.bot.run())
+
 
 if __name__ == "__main__":
-    run()
+    Runner().run()

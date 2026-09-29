@@ -1,18 +1,17 @@
 venv:
-    python -m venv .venv
+	uv venv
 
 install:
-    .venv/bin/python -m pip install uv
-    .venv/bin/uv install .
+	uv sync
 
 run:
-    .venv/bin/python -m my_first_bot.runner
+	uv run python -m my_first_bot.runner
 
 docker-build:
-    docker build -t my_first_bot:local .
+	docker build -t my_first_bot:local .
 
 docker-run:
-    docker run --rm --env-file .env my_first_bot:local
+	docker run --rm --env-file .env my_first_bot:local
 
 clean:
-    rm -rf .venv
+	uv run python -c "import shutil; shutil.rmtree('.venv', ignore_errors=True)"

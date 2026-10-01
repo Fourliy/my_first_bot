@@ -141,7 +141,7 @@ flowchart LR
 	- `content: str` — текст сообщения.
 - `Dialog` — история одного чата: список `DialogMessage` и `asyncio.Lock` для последовательной обработки.
 - `Ticket`:
-	- `id: str` — номер заявки (в заглушке генерируется локально, в реальной системе — присваивается ею);
+	- `id: int` — номер заявки (в заглушке генерируется по порядку, в реальной системе — присваивается ею);
 	- `status: Literal['open','closed']`;
 	- `title: str` — краткая тема;
 	- `description: str` — описание (по тексту оповещения);
@@ -167,10 +167,10 @@ flowchart LR
 | `LOG_LEVEL` | нет | Уровень логов, по умолчанию `INFO` |
 | `ALERT_CHAT_ID` | нет | Чат/канал, где ждём оповещения |
 | `ALERT_SENDER_ID` | нет | Отправитель оповещений |
-| `ALERT_PATTERN` | нет | Ключевое слово или регулярное выражение для распознавания оповещения |
+| `ALERT_PATTERN` | нет | Ключевое слово или регулярное выражение для распознавания оповещения, по умолчанию `#alert` |
 | `NOTIFY_CHAT_ID` | нет | Куда отправлять уведомления о заявках; по умолчанию — исходный чат |
 
-Если правило оповещения не задано (`ALERT_*` пусты), бот работает только в режиме диалога. Все переменные перечислены в `.env.example`.
+Заданные условия `ALERT_*` должны совпасть все. Если `ALERT_PATTERN` явно задан пустым и `ALERT_CHAT_ID`, `ALERT_SENDER_ID` не заданы, бот работает только в режиме диалога. Все переменные перечислены в `.env.example`.
 
 ## Логирование
 
@@ -204,7 +204,7 @@ Make targets: `venv`, `install`, `run`, `docker-build`, `docker-run`, `clean`.
 - Сервис создаётся из GitHub-репозитория; Railway собирает образ по `Dockerfile` из корня и запускает команду `CMD` из него.
 - Бот работает как фоновый worker в режиме long polling: публичный домен, порт и webhook не нужны.
 - Секреты и настройки (`TELEGRAM_TOKEN`, `OPENROUTER_API_KEY`, `MODEL_NAME`, `LOG_LEVEL`, `ALERT_*`, `NOTIFY_CHAT_ID`) задаются в Railway Variables; `.env` в образ не попадает (`.dockerignore`).
-- Количество экземпляров — ровно один. На время работы в Railway локальный бот с тем же токеном должен быть остановлен.
+- Количество экземпляров — ровно один (значение по умолчанию в настройках сервиса). На время работы в Railway локальный бот с тем же токеном должен быть остановлен.
 - Политика перезапуска — On Failure, чтобы бот поднимался после падения.
 - Деплой — автоматически при push в основную ветку или вручную из панели Railway.
 - Логи доступны в разделе Deployments → Logs.
@@ -214,7 +214,7 @@ Make targets: `venv`, `install`, `run`, `docker-build`, `docker-run`, `clean`.
 	{
 	  "$schema": "https://railway.com/railway.schema.json",
 	  "build": { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
-	  "deploy": { "numReplicas": 1, "restartPolicyType": "ON_FAILURE", "restartPolicyMaxRetries": 10 }
+	  "deploy": { "restartPolicyType": "ON_FAILURE", "restartPolicyMaxRetries": 10 }
 	}
 	```
 

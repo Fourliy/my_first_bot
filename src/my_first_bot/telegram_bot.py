@@ -134,7 +134,10 @@ class TelegramBot:
                     {"role": "user", "content": text[:MAX_INPUT_CHARS]},
                 ]
             )
-            title, _, description = reply.strip().partition("\n")
+            reply = reply.strip()
+            title, sep, description = reply.partition("\n")
+            if not sep:  # модель иногда пишет тему и описание одной строкой
+                title, sep, description = reply.partition(". ")
             if title.strip():
                 return title.strip()[:MAX_TITLE_CHARS], description.strip() or text
         except Exception:

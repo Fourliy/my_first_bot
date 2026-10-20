@@ -34,7 +34,10 @@ class TelegramBot:
 
     async def _start(self, message: Message) -> None:
         logger.info("event=start chat_id=%s", message.chat.id)
-        await message.answer("Здравствуйте! Я консультант компании. Задайте свой вопрос.")
+        await message.answer(
+            "Здравствуйте! Я консультант компании: расскажу про курсы, услуги и портфолио "
+            "и помогу оставить заявку на консультацию. Задайте свой вопрос."
+        )
 
     async def _on_other(self, message: Message) -> None:
         logger.info("event=message chat_id=%s content=non_text", message.chat.id)

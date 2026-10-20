@@ -20,7 +20,7 @@ async def run_agent(llm: LLMClient, messages: list[dict], chat_id: int) -> str:
         messages.append(message.model_dump(exclude_none=True))
         for call in message.tool_calls:
             logger.info("event=tool_call chat_id=%s tool=%s", chat_id, call.function.name)
-            result = await run_tool(call.function.name, call.function.arguments)
+            result = await run_tool(call.function.name, call.function.arguments, chat_id)
             messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
     logger.warning("event=agent_limit chat_id=%s", chat_id)
     return NO_ANSWER

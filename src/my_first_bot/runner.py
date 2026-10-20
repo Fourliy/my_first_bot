@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from .config import Config
+from .leads import init_db
 from .llm_client import LLMClient
 from .logger import setup_logger
 from .telegram_bot import TelegramBot
@@ -13,6 +14,7 @@ class Runner:
     def __init__(self) -> None:
         self.config = Config()
         setup_logger(self.config.log_level)
+        init_db()
         self.bot = TelegramBot(self.config, LLMClient(self.config))
 
     def run(self) -> None:

@@ -66,18 +66,21 @@ docs/
 data/                  # PDF компании, индекс и база лидов; каталог монтируется volume
 	chroma/
 	leads.db
+bot/tools/
+	rag.py             # поиск по индексу chromadb
+	web.py             # поиск Tavily
+scripts/
+	index_pdf.py       # PDF → фрагменты → chromadb
 src/my_first_bot/
 	__init__.py
-	config.py          # окружение и путь к системному промпту
+	config.py          # окружение и чтение системного промпта
 	logger.py          # настройка logging
-	llm.py             # chat и embeddings через openai SDK
+	llm_client.py      # chat и embeddings через openai SDK
 	agent.py           # явный цикл tool calling
-	tools.py           # rag_search, web_search, capture_lead
-	rag.py             # PDF → фрагменты → chromadb, поиск
+	tools.py           # схемы и вызов rag_search, web_search, capture_lead
 	leads.py           # запись лида в sqlite
 	telegram_bot.py    # aiogram handlers (polling)
 	runner.py          # сборка и запуск polling
-tests/
 ```
 
 ## Архитектура
@@ -102,7 +105,7 @@ flowchart LR
     capture_lead --> SQLite["sqlite3 ./data/leads.db"]
 ```
 
-При старте `rag` читает PDF из `./data` через pymupdf4llm, считает эмбеддинги тем же клиентом openai (`LLM_BASE_URL`) и пишет фрагменты в `./data/chroma`. Уже проиндексированный файл повторно не обрабатывается.
+При старте `scripts/index_pdf.py` читает PDF из `./data` через pymupdf4llm, считает эмбеддинги тем же клиентом openai (`OPENAI_BASE_URL`) и пишет фрагменты в `./data/chroma`. Уже проиндексированный файл повторно не обрабатывается.
 
 ### Сценарий 1: ответ по документам компании
 
@@ -113,9 +116,9 @@ flowchart LR
 
 ### Сценарий 2: проверка актуальных фактов
 
-1. Модель не уверена в ответе или сведения могут устареть.
-2. Она вызывает `web_search`. Tavily возвращает краткие актуальные результаты.
-3. Итоговый ответ опирается на них и на документы компании, если вопрос про компанию.
+1. Вопрос про услуги компании, и в нём нужна версия, вендор или дата.
+2. Модель вызывает `web_search`. Tavily возвращает краткие актуальные результаты.
+3. Итоговый ответ опирается на них и на документы компании. Общие новости и вопросы не об услугах бот не ищет: вежливо отказывает.
 
 ### Сценарий 3: заявка на консультацию
 
@@ -164,38 +167,38 @@ flowchart LR
 
 ## Работа с ИИ
 
-Один async-клиент openai. Базовый URL — `LLM_BASE_URL` (OpenRouter): и chat completions с tool calling, и embeddings. Ключ один.
+Один async-клиент openai. Базовый URL — `OPENAI_BASE_URL` (OpenRouter): и chat completions с tool calling, и embeddings. Ключ один (`OPENAI_API_KEY` или `OPENROUTER_API_KEY`).
 
 | Задача | Модель | Откуда |
 |---|---|---|
-| Диалог и выбор инструмента | `LLM_MODEL` | `.env` |
+| Диалог и выбор инструмента | `MODEL_TEXT` | `.env` |
 | Эмбеддинги фрагментов и запроса | `EMBEDDING_MODEL`, по умолчанию `openai/text-embedding-3-small` | `.env` |
 
-Системный промпт читается из файла. Путь — `SYSTEM_PROMPT_PATH`, по умолчанию `prompts/system.txt`. В промпте роль консультанта: отвечать по документам компании, вызывать `rag_search` для вопросов о компании, `web_search` — когда ответ неуверенный или факты могли устареть, `capture_lead` — когда пользователь назвал имя и контакт, не выдумывать факты.
+Системный промпт читается из файла. Путь — `SYSTEM_PROMPT_FILE`, по умолчанию `prompts/system.txt`. В промпте роль консультанта llmstart: отвечать только про услуги компании по документам через `rag_search`, вежливо отказывать за этими границами, вызывать `web_search` только для версии, вендора или даты в вопросе об услугах, `capture_lead` — когда пользователь назвал имя и контакт. Ответ перед отправкой в Telegram очищается от `**`.
 
 Инструменты передаются в chat completions как tools:
 
 | Инструмент | Когда | Результат |
 |---|---|---|
 | `rag_search` | вопрос о компании, услугах, курсах, портфолио | релевантные фрагменты PDF |
-| `web_search` | модель не уверена или информация может быть устаревшей | краткие результаты Tavily |
+| `web_search` | версия, вендор или дата в вопросе об услугах компании | краткие результаты Tavily |
 | `capture_lead` | есть имя и контакт | номер записанного лида |
 
 Цикл в `agent`: сообщения и список tools уходят в модель; если в ответе есть tool calls — каждый вызывается, результат добавляется в историю, запрос повторяется; если модель вернула текст — он уходит пользователю.
 
-Мониторинг: при `LANGSMITH_ENABLED=false` трассировки нет. При `true` вызовы openai уходят в LangSmith.
+Мониторинг: при `LANGSMITH_ENABLED=false` трассировки нет. При `true` ход пользователя — один трейс `agent_run`, внутри него вызовы модели и инструментов. Поток диалога — `thread_id` вида `{user_id}-{uniq}`; команда `/start` начинает новый поток.
 
 ## Конфигурация
 
 | Переменная | Обязательна | Назначение |
 |---|---|---|
 | `TELEGRAM_TOKEN` | да | Токен бота |
-| `LLM_API_KEY` | да | Ключ OpenRouter для чата и эмбеддингов |
-| `LLM_BASE_URL` | нет | Базовый URL, по умолчанию `https://openrouter.ai/api/v1` |
-| `LLM_MODEL` | нет | Модель диалога с tool calling, по умолчанию `openai/gpt-4o-mini` |
+| `OPENAI_API_KEY` | да | Ключ OpenRouter для чата и эмбеддингов; подойдёт и `OPENROUTER_API_KEY` |
+| `OPENAI_BASE_URL` | нет | Базовый URL, по умолчанию `https://openrouter.ai/api/v1` |
+| `MODEL_TEXT` | нет | Модель диалога с tool calling, по умолчанию `openai/gpt-4o-mini` |
 | `EMBEDDING_MODEL` | нет | Модель эмбеддингов, по умолчанию `openai/text-embedding-3-small` |
 | `TAVILY_API_KEY` | да | Ключ Tavily Search API |
-| `SYSTEM_PROMPT_PATH` | нет | Путь к системному промпту, по умолчанию `prompts/system.txt` |
+| `SYSTEM_PROMPT_FILE` | нет | Путь к системному промпту, по умолчанию `prompts/system.txt` |
 | `LANGSMITH_ENABLED` | нет | Трассировка LangSmith, по умолчанию `false` |
 | `LANGSMITH_API_KEY` | если мониторинг включён | Ключ LangSmith |
 | `LOG_LEVEL` | нет | Уровень логов, по умолчанию `INFO` |
@@ -234,7 +237,7 @@ Make targets: `venv`, `install`, `run`, `docker-build`, `docker-run`, `clean`.
 
 - Сервис создаётся из GitHub-репозитория; Railway собирает образ по `Dockerfile` из корня и запускает команду `CMD` из него.
 - Бот работает как фоновый worker в режиме long polling: публичный домен, порт и webhook не нужны.
-- Секреты и настройки (`TELEGRAM_TOKEN`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `EMBEDDING_MODEL`, `TAVILY_API_KEY`, `SYSTEM_PROMPT_PATH`, `LANGSMITH_*`, `LOG_LEVEL`) задаются в Railway Variables; `.env` в образ не попадает (`.dockerignore`).
+- Секреты и настройки (`TELEGRAM_TOKEN`, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `MODEL_TEXT`, `EMBEDDING_MODEL`, `TAVILY_API_KEY`, `SYSTEM_PROMPT_FILE`, `LANGSMITH_*`, `LOG_LEVEL`) задаются в Railway Variables; `.env` в образ не попадает (`.dockerignore`).
 - К сервису подключён volume на `/app/data`: PDF, `chroma` и `leads.db` не пропадают при редеплое и перезапуске. История диалога в памяти при этом сбрасывается.
 - Количество экземпляров — ровно один (значение по умолчанию в настройках сервиса). На время работы в Railway локальный бот с тем же токеном должен быть остановлен.
 - Политика перезапуска — On Failure, чтобы бот поднимался после падения.

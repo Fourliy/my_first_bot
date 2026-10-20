@@ -2,6 +2,8 @@ import asyncio
 import logging
 from pathlib import Path
 
+from langsmith import traceable
+
 logger = logging.getLogger("my_first_bot")
 
 DATA_DIR = Path("data")
@@ -77,6 +79,7 @@ def _nearest(vector: list[float], n_results: int) -> list[tuple[str, str]]:
     return [(meta.get("source", ""), text) for text, meta in zip(documents, metadatas) if text]
 
 
+@traceable(name="rag_search")
 async def rag_search(query: str, n_results: int = 4) -> str:
     """Ближайшие фрагменты PDF компании. n_results — сколько фрагментов вернуть."""
     query = (query or "").strip()

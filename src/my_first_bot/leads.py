@@ -3,6 +3,8 @@ import logging
 import sqlite3
 from pathlib import Path
 
+from langsmith import traceable
+
 logger = logging.getLogger("my_first_bot")
 
 DB_PATH = Path("data/leads.db")
@@ -43,6 +45,15 @@ def _save_sync(name: str, contact: str, chat_id: int) -> int:
         conn.close()
 
 
+def _hide_contact(inputs: dict) -> dict:
+    """В трейс LangSmith имя и контакт не попадают."""
+    hidden = dict(inputs)
+    hidden["name"] = "***"
+    hidden["contact"] = "***"
+    return hidden
+
+
+@traceable(name="capture_lead", process_inputs=_hide_contact)
 async def save_lead(name: str, contact: str, chat_id: int) -> int:
     """Пишет лида в sqlite вне цикла событий. Контакт в лог не попадает."""
     return await asyncio.to_thread(_save_sync, name, contact, chat_id)

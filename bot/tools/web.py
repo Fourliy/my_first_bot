@@ -3,6 +3,8 @@ import logging
 import re
 from datetime import date
 
+from langsmith import traceable
+
 logger = logging.getLogger("my_first_bot")
 
 UNAVAILABLE = "Поиск в интернете недоступен. Не выдумывай свежие факты."
@@ -32,6 +34,7 @@ def _search(query: str) -> list[dict]:
     return data.get("results") or []
 
 
+@traceable(name="web_search")
 async def web_search(query: str) -> str:
     """Краткие результаты Tavily. Сбой поиска не роняет бота."""
     query = (query or "").strip()

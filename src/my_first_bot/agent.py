@@ -1,5 +1,7 @@
 import logging
 
+from langsmith import traceable
+
 from .llm_client import LLMClient
 from .tools import TOOLS, run_tool
 
@@ -10,6 +12,7 @@ MAX_STEPS = 5
 NO_ANSWER = "Не удалось подготовить ответ. Попробуйте переформулировать вопрос."
 
 
+@traceable(name="agent_run")
 async def run_agent(llm: LLMClient, messages: list[dict], chat_id: int) -> str:
     """Цикл tool calling: запрос к модели → вызов инструментов → повтор, пока нет текста."""
     messages = list(messages)  # историю чата не меняем: сюда попадают служебные сообщения

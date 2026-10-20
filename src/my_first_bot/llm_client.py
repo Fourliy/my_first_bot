@@ -3,6 +3,7 @@ import os
 import time
 
 import openai
+from langsmith import traceable
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessage
 
@@ -10,8 +11,8 @@ from .config import Config
 
 logger = logging.getLogger("my_first_bot")
 
-# Ограничение ответа: укладывается в лимит Telegram.
-MAX_TOKENS = 1000
+# Ограничение ответа: укладывается в лимит Telegram и в остаток кредитов OpenRouter.
+MAX_TOKENS = 400
 
 
 class LLMError(Exception):
@@ -64,6 +65,12 @@ class LLMClient:
         except openai.APIConnectionError as e:
             raise LLMError("Нет связи с моделью. Попробуйте позже.") from e
         except openai.APIError as e:  # 401/402/404/5xx и прочие ошибки API
+            status = getattr(e, "status_code", None)
+            logger.warning("event=llm_error status=%s", status)
+            if status == 402:
+                raise LLMError(
+                    "Закончился лимит модели. Пополните кредиты OpenRouter и повторите вопрос."
+                ) from e
             raise LLMError("Сервис модели временно недоступен. Попробуйте позже.") from e
 
         latency_ms = int((time.monotonic() - started) * 1000)
@@ -72,6 +79,7 @@ class LLMClient:
             raise LLMError("Модель вернула пустой ответ. Попробуйте переформулировать вопрос.")
         return response.choices[0].message
 
+    @traceable(name="embed")
     async def embed(self, texts: list[str]) -> list[list[float]]:
         """Эмбеддинги фрагментов и запроса. Тот же клиент и ключ, что у чата."""
         try:

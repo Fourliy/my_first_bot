@@ -5,5 +5,6 @@ COPY pyproject.toml uv.lock ./
 COPY src ./src
 COPY bot ./bot
 COPY scripts ./scripts
+COPY prompts ./prompts
 RUN uv sync --frozen --no-dev
 CMD ["uv", "run", "--no-dev", "python", "-m", "my_first_bot.runner"]

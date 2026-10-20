@@ -1,4 +1,5 @@
 import logging
+import uuid
 from datetime import date
 
 from aiogram import Bot, Dispatcher, F
@@ -27,14 +28,24 @@ class TelegramBot:
         self._llm = llm
         self._system_prompt = config.system_prompt
         self._history: dict[int, list[dict]] = {}  # chat_id → реплики user/assistant
+        self._threads: dict[int, str] = {}  # user_id → thread_id потока LangSmith
         self.bot = Bot(token=config.telegram_token)
         self.dp = Dispatcher()
         self.dp.message.register(self._start, Command("start"))
         self.dp.message.register(self._on_text, F.text)
         self.dp.message.register(self._on_other)  # стикеры, фото, голосовые и т.д.
 
+    def _user_id(self, message: Message) -> int:
+        return message.from_user.id if message.from_user else message.chat.id
+
+    def _new_thread(self, user_id: int) -> str:
+        thread_id = f"{user_id}-{uuid.uuid4().hex[:8]}"
+        self._threads[user_id] = thread_id
+        return thread_id
+
     async def _start(self, message: Message) -> None:
-        logger.info("event=start chat_id=%s", message.chat.id)
+        thread_id = self._new_thread(self._user_id(message))
+        logger.info("event=start chat_id=%s thread_id=%s", message.chat.id, thread_id)
         await message.answer(
             "Здравствуйте! Я консультант компании: расскажу про курсы, услуги и портфолио "
             "и помогу оставить заявку на консультацию. Задайте свой вопрос."
@@ -57,8 +68,16 @@ class TelegramBot:
         del history[:-MAX_HISTORY]
         system = f"Сегодня {date.today().isoformat()}.\n{self._system_prompt}"
         messages = [{"role": "system", "content": system}, *history]
+        thread_id = self._threads.get(self._user_id(message)) or self._new_thread(
+            self._user_id(message)
+        )
         try:
-            reply = await run_agent(self._llm, messages, chat_id)
+            reply = await run_agent(
+                self._llm,
+                messages,
+                chat_id,
+                langsmith_extra={"metadata": {"thread_id": thread_id}},
+            )
         except LLMError as e:
             history.pop()  # неудачный вопрос не засоряет контекст
             await message.answer(e.user_message)
@@ -68,6 +87,7 @@ class TelegramBot:
             history.pop()
             await message.answer("Произошла ошибка. Попробуйте ещё раз чуть позже.")
             return
+        reply = reply.replace("**", "")
         history.append({"role": "assistant", "content": reply})
         del history[:-MAX_HISTORY]
         await message.answer(reply[:TELEGRAM_MAX_CHARS])

@@ -7,6 +7,9 @@ install:
 run:
 	uv run python -m my_first_bot.runner
 
+index:
+	uv run python scripts/index_pdf.py
+
 docker-build:
 	docker build -t my_first_bot:local .
 

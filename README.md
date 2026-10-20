@@ -74,7 +74,7 @@ make docker-build
 make docker-run
 ```
 
-Остановка: `Ctrl+C`. Другие цели Make: `venv`, `clean`.
+Остановка: `Ctrl+C`. Индексация PDF: `make index`. Другие цели Make: `venv`, `clean`.
 
 Одновременно должен работать только один экземпляр бота: два процесса с одним токеном конфликтуют (ошибка `Conflict: terminated by other getUpdates request`). Если бот запущен в Railway, локально его не запускайте.
 

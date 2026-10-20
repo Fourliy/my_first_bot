@@ -1,8 +1,10 @@
 import logging
+import os
 import time
 
 import openai
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessage
 
 from .config import Config
 
@@ -21,23 +23,34 @@ class LLMError(Exception):
 
 
 class LLMClient:
-    """Обёртка над openai для текстовых запросов (локально — Ollama)."""
+    """Обёртка над openai для запросов с инструментами (локально — Ollama)."""
 
     def __init__(self, config: Config) -> None:
-        self._client = AsyncOpenAI(
+        client = AsyncOpenAI(
             api_key=config.openai_api_key,
             base_url=config.openai_base_url,
             timeout=20,
             max_retries=2,  # повтор при временных ошибках с растущей паузой
         )
+        if config.langsmith_enabled:
+            from langsmith.wrappers import wrap_openai
+
+            os.environ.setdefault(
+                "LANGSMITH_API_KEY", os.getenv("LANGCHAIN_API_KEY", "")
+            )
+            os.environ["LANGSMITH_TRACING"] = "true"
+            client = wrap_openai(client)
+        self._client = client
         self._model = config.model_text
 
-    async def chat(self, messages: list[dict]) -> str:
+    async def chat(self, messages: list[dict], tools: list[dict] | None = None) -> ChatCompletionMessage:
+        """Один запрос к модели. Возвращает сообщение целиком: текст и/или tool_calls."""
+        params: dict = {"model": self._model, "messages": messages, "max_tokens": MAX_TOKENS}
+        if tools:
+            params["tools"] = tools
         started = time.monotonic()
         try:
-            response = await self._client.chat.completions.create(
-                model=self._model, messages=messages, max_tokens=MAX_TOKENS
-            )
+            response = await self._client.chat.completions.create(**params)
         except openai.APITimeoutError as e:
             raise LLMError(
                 "Модель отвечает слишком долго. Попробуйте ещё раз чуть позже."
@@ -51,7 +64,6 @@ class LLMClient:
 
         latency_ms = int((time.monotonic() - started) * 1000)
         logger.info("event=llm_response model=%s latency_ms=%s", self._model, latency_ms)
-        content = (response.choices[0].message.content or "") if response.choices else ""
-        if not content.strip():
+        if not response.choices:
             raise LLMError("Модель вернула пустой ответ. Попробуйте переформулировать вопрос.")
-        return content
+        return response.choices[0].message

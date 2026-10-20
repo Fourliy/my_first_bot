@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.enums import ChatAction
@@ -54,7 +55,8 @@ class TelegramBot:
         history = self._history.setdefault(chat_id, [])
         history.append({"role": "user", "content": text[:MAX_INPUT_CHARS]})
         del history[:-MAX_HISTORY]
-        messages = [{"role": "system", "content": self._system_prompt}, *history]
+        system = f"Сегодня {date.today().isoformat()}.\n{self._system_prompt}"
+        messages = [{"role": "system", "content": system}, *history]
         try:
             reply = await run_agent(self._llm, messages, chat_id)
         except LLMError as e:

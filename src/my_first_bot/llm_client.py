@@ -8,7 +8,7 @@ from .config import Config
 
 logger = logging.getLogger("my_first_bot")
 
-# Ограничение ответа: экономит кредиты OpenRouter и укладывается в лимит Telegram.
+# Ограничение ответа: укладывается в лимит Telegram.
 MAX_TOKENS = 1000
 
 
@@ -21,16 +21,16 @@ class LLMError(Exception):
 
 
 class LLMClient:
-    """Обёртка над openai для запросов к OpenRouter."""
+    """Обёртка над openai для текстовых запросов (локально — Ollama)."""
 
     def __init__(self, config: Config) -> None:
         self._client = AsyncOpenAI(
-            api_key=config.openrouter_api_key,
-            base_url="https://openrouter.ai/api/v1",
+            api_key=config.openai_api_key,
+            base_url=config.openai_base_url,
             timeout=20,
             max_retries=2,  # повтор при временных ошибках с растущей паузой
         )
-        self._model = config.model_name
+        self._model = config.model_text
 
     async def chat(self, messages: list[dict]) -> str:
         started = time.monotonic()

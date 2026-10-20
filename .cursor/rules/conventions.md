@@ -1,36 +1,45 @@
 ---
 name: Conventions
-description: Принципы генерации кода для MVP Telegram LLM-ассистента
+description: Принципы генерации кода для ИИ-агента-консультанта
 alwaysApply: true
 ---
 
 # Conventions
 
-Источник истины по стеку и границам MVP: [`docs/vision.md`](docs/vision.md). Не копируй его сюда и не расходись с ним.
+Источник истины по стеку и границам: [`docs/vision.md`](docs/vision.md). Не копируй его сюда и не расходись с ним.
 
 ## Цель
 
-Генерируй **минимальный** код, достаточный проверить идею. Не проектируй «на вырост».
+Генерируй **минимальный** код агента-консультанта: ответы по PDF компании, проверка фактов в интернете, запись лида. Не проектируй «на вырост».
 
 ## Стек
 
 - Используй только технологии из `docs/vision.md`.
 - Новую зависимость не добавляй, пока задачу нельзя решить ими.
-- Не вводи БД, Redis, веб-фреймворк, webhook. Облачный хостинг — только Railway, как в vision.
+- Без LangChain и других AI-фреймворков. Агент — явный цикл tool calling на openai SDK в одном модуле.
+- Инструменты только три: `rag_search`, `web_search`, `capture_lead`.
+- Не вводи Redis, веб-фреймворк и webhook. Облачный хостинг — только Railway, как в vision.
+- Функции, не классы: один модуль — одна задача. async везде; синхронные chromadb, sqlite3 и PDF — через `asyncio.to_thread`.
 
 ```python
-# ❌ BAD — лишний слой вне vision
-from fastapi import FastAPI
-from redis import Redis
+# ❌ BAD — фреймворк и класс вне vision
+from langchain.agents import AgentExecutor
 
-# ✅ GOOD — aiogram + openai + logging, как в vision
-from aiogram import Router
-import logging
+class ConsultantAgent:
+    ...
+
+# ✅ GOOD — обычная функция инструмента
+async def rag_search(query: str) -> str:
+    ...
 ```
 
 ## Конфиг и секреты
 
-Секреты и настройки — только из переменных окружения, не в коде и не в репозитории.
+Секреты и настройки — только из переменных окружения. Системный промпт — `prompts/system.txt`, в окружении только путь. Не логируй ключи и контакты лидов.
+
+## Данные
+
+Индекс и лиды — в `./data` (chromadb и sqlite). История диалога — в памяти. `./data` не копируй в Docker-образ: каталог приходит volume.
 
 ## Запуск
 

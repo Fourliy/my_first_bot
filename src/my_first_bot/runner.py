@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+from scripts.index_pdf import index_pdfs
+
 from .config import Config
 from .leads import init_db
 from .llm_client import LLMClient
@@ -15,13 +17,20 @@ class Runner:
         self.config = Config()
         setup_logger(self.config.log_level)
         init_db()
-        self.bot = TelegramBot(self.config, LLMClient(self.config))
+        self.llm = LLMClient(self.config)
+        self.bot = TelegramBot(self.config, self.llm)
+
+    async def _start(self) -> None:
+        logger = logging.getLogger("my_first_bot")
+        logger.info("event=start langsmith=%s", self.config.langsmith_enabled)
+        try:
+            await index_pdfs(self.llm)
+        except Exception:
+            logger.error("event=index_error", exc_info=True)
+        await self.bot.run()
 
     def run(self) -> None:
-        logging.getLogger("my_first_bot").info(
-            "event=start langsmith=%s", self.config.langsmith_enabled
-        )
-        asyncio.run(self.bot.run())
+        asyncio.run(self._start())
 
 
 if __name__ == "__main__":

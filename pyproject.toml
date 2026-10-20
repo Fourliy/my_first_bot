@@ -4,8 +4,10 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "aiogram>=3,<4",
+    "chromadb>=1.5.9",
     "langsmith>=0.14.11",
     "openai",
+    "pymupdf4llm==1.28.2",
     "python-dotenv",
 ]
 

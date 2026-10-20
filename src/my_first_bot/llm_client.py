@@ -38,10 +38,14 @@ class LLMClient:
             os.environ.setdefault(
                 "LANGSMITH_API_KEY", os.getenv("LANGCHAIN_API_KEY", "")
             )
+            os.environ.setdefault(
+                "LANGSMITH_PROJECT", os.getenv("LANGCHAIN_PROJECT", "")
+            )
             os.environ["LANGSMITH_TRACING"] = "true"
             client = wrap_openai(client)
         self._client = client
         self._model = config.model_text
+        self._embedding_model = config.embedding_model
 
     async def chat(self, messages: list[dict], tools: list[dict] | None = None) -> ChatCompletionMessage:
         """Один запрос к модели. Возвращает сообщение целиком: текст и/или tool_calls."""
@@ -67,3 +71,17 @@ class LLMClient:
         if not response.choices:
             raise LLMError("Модель вернула пустой ответ. Попробуйте переформулировать вопрос.")
         return response.choices[0].message
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        """Эмбеддинги фрагментов и запроса. Тот же клиент и ключ, что у чата."""
+        try:
+            response = await self._client.embeddings.create(
+                model=self._embedding_model, input=texts
+            )
+        except openai.APITimeoutError as e:
+            raise LLMError("Модель отвечает слишком долго. Попробуйте ещё раз чуть позже.") from e
+        except openai.APIConnectionError as e:
+            raise LLMError("Нет связи с моделью. Попробуйте позже.") from e
+        except openai.APIError as e:
+            raise LLMError("Сервис модели временно недоступен. Попробуйте позже.") from e
+        return [item.embedding for item in response.data]

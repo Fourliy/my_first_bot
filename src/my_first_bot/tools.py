@@ -2,6 +2,7 @@ import json
 import logging
 
 from bot.tools.rag import rag_search as search_documents
+from bot.tools.web import web_search as search_web
 
 from .leads import save_lead
 
@@ -49,7 +50,24 @@ TOOLS: list[dict] = [
                 "required": ["name", "contact"],
             },
         },
-    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_search",
+            "description": (
+                "Проверить актуальный факт в интернете. Вызывать, когда ответ неуверенный "
+                "или сведения могли устареть."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Что проверить в интернете"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
 ]
 
 
@@ -82,7 +100,22 @@ async def rag_search(arguments: str, chat_id: int) -> str:
     return await search_documents(query, n_results)
 
 
-TOOL_HANDLERS = {"capture_lead": capture_lead, "rag_search": rag_search}
+async def web_search(arguments: str, chat_id: int) -> str:
+    try:
+        data = json.loads(arguments or "{}")
+    except json.JSONDecodeError:
+        return "Пустой запрос. Не выдумывай свежие факты."
+    query = str(data.get("query") or "").strip()
+    if not query:
+        return "Пустой запрос. Не выдумывай свежие факты."
+    return await search_web(query)
+
+
+TOOL_HANDLERS = {
+    "capture_lead": capture_lead,
+    "rag_search": rag_search,
+    "web_search": web_search,
+}
 
 
 async def run_tool(name: str, arguments: str, chat_id: int) -> str:
@@ -96,4 +129,6 @@ async def run_tool(name: str, arguments: str, chat_id: int) -> str:
         logger.error("event=tool_error tool=%s chat_id=%s", name, chat_id, exc_info=True)
         if name == "capture_lead":
             return "Не удалось сохранить заявку. Попроси пользователя повторить имя и контакт."
+        if name == "web_search":
+            return "Поиск в интернете недоступен. Скажи, что не можешь проверить свежий факт, и не выдумывай его."
         return "Поиск по документам не сработал. Скажи, что сейчас не можешь проверить документы."

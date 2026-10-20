@@ -9,6 +9,7 @@ dependencies = [
     "openai",
     "pymupdf4llm==1.28.2",
     "python-dotenv",
+    "tavily-python>=0.8.5",
 ]
 
 [build-system]

@@ -9,6 +9,8 @@ SYSTEM_PROMPT = (
     "rag_search и отвечай только по найденным фрагментам. Если фрагментов нет или в них нет "
     "нужного факта, так и скажи: в документах компании этого нет. Не выдумывай курсы, услуги, "
     "цены, сроки и проекты. "
+    "Если не уверен в факте или сведения могли устареть, вызови web_search и опирайся на его "
+    "результат. Если поиск ничего не нашёл или недоступен, так и скажи: не выдумывай свежие факты. "
     "Когда человеку нужна консультация, сам предложи оставить заявку и спроси имя и контакт "
     "(телефон, email или Telegram). Вызывай capture_lead только когда есть и имя, и контакт. "
     "Без одного из них инструмент не вызывай — спроси недостающее. "
@@ -27,6 +29,7 @@ class Config:
         self.openai_base_url = os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
         self.model_text = os.getenv("MODEL_TEXT", "openai/gpt-4o-mini")
         self.embedding_model = os.getenv("EMBEDDING_MODEL", "openai/text-embedding-3-small")
+        self.tavily_api_key = self._require("TAVILY_API_KEY")
         self.system_prompt = SYSTEM_PROMPT
         self.log_level = os.getenv("LOG_LEVEL", "INFO").upper()
         # Трассировка LangSmith: выключена по умолчанию, при включении нужен ключ.
